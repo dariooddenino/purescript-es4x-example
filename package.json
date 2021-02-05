@@ -1,0 +1,25 @@
+{
+  "name": "xstrm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "es4x test index.test.js",
+    "start": "es4x",
+    "postinstall": "es4x install"
+  },
+  "dependencies": {
+    "@vertx/core": "latest",
+    "@vertx/web": "latest",
+    "@vertx/web-templ-handlebars": "latest"
+  },
+  "devDependencies": {
+    "@es4x/create": "latest",
+    "@vertx/unit": "latest"
+  },
+  "author": "",
+  "license": "ISC"
+}
