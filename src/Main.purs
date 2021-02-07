@@ -110,6 +110,8 @@ runHttpServer config router = do
 --   liftEffect $ runHttpServer config 8888
 --   log "Server running"
 
+data Template r = Template String { | r }
+
 class Respondable a where
   respond :: Response -> a -> Aff Unit
 
@@ -117,8 +119,7 @@ instance stringRespondable :: Respondable String where
   respond resp s =
     liftEffect $ endStr resp s
 
-data Template r = Template String { | r }
-
+else
 instance templateRespondable
          :: (RowToList r t
             , WriteForeignFields t r () r2
@@ -129,11 +130,24 @@ instance templateRespondable
       -- TODO error handling
       resp' <- putHeader resp "Content-Type" "text/html; charset=UTF-8"
       endStr resp' (getTemplateResult tres)
+else
+-- TODO: this right now works as a catch all, I think. I think it becomes a problem once more instances are being created?
+-- I think we have to use Foreign or wrap in another data type. This also changes how handler should be written.
+instance jsonRespondable
+        :: WriteForeign a
+        => Respondable a where
+  respond resp a = liftEffect $ do
+    resp' <- putHeader resp "Content-Type" "application/json"
+    endStr resp' $ writeJSON a
+
+
+-- data Foo = Foo Int
+-- instance fooRespondable :: Respondable foo where
+--   respond resp a = liftEffect $ endStr resp "Foo"
 
 
 -- TODO I think we should pass the response to the handler, or give some
 --      implicit way to handle it
--- TODO abstract some inner common stuff from these
 handler :: forall a. Respondable a => Router -> RoutePath -> (RoutingContext -> Aff a) -> Effect Unit
 handler router path ihandler = do
   iroute <- createRoute router path
@@ -149,6 +163,9 @@ stringHandler = handler
 templateHandler :: forall r t r2. RowToList r t => WriteForeignFields t r () r2 => Router -> RoutePath -> (RoutingContext -> Aff (Template r)) -> Effect Unit
 templateHandler = handler
 
+jsonHandler :: forall a. WriteForeign a => Router -> RoutePath -> (RoutingContext -> Aff a) -> Effect Unit
+jsonHandler = handler
+
 main :: Effect Unit
 main = do
   let config = Config { port: 8888 }
@@ -159,6 +176,9 @@ main = do
 
   templateHandler router "/fortunes" \req -> do
     pure $ Template "templates/fortunes.hbs" { fortunes: [{ id: 1, message: "This template work" }] }
+
+  jsonHandler router "/json" \req -> do
+    pure { bananas: [1, 2, 3] }
 
   -- just temp stuff
   runHttpServer config router
