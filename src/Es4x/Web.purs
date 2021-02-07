@@ -3,6 +3,7 @@ module Es4x.Web where
 import Control.Bind (bind)
 import Data.Unit (Unit)
 import Effect (Effect)
+import Effect.Class (class MonadEffect)
 
 data Server
 data RoutingContext
@@ -24,11 +25,6 @@ foreign import createRoute :: Router -> RoutePath -> Effect Route
 foreign import handle :: Route -> (RoutingContext -> Effect Unit) -> Effect Unit
 foreign import handleRouter :: Server -> Router -> Effect Server
 
-runHttpServer :: Router -> Port -> Effect Unit
-runHttpServer router port = do
-  s1 <- createHttpServer
-  s2 <- handleRouter s1 router
-  listen s2 port
 
 handlePath :: Router -> RoutePath -> (RoutingContext -> Effect Unit) -> Effect Unit
 handlePath router path handler = do

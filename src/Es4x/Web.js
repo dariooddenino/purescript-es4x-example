@@ -1,24 +1,23 @@
 var vweb = require('@vertx/web');
 var Router = vweb.Router;
 var vtempl = require('@vertx/web-templ-handlebars');
-// wip
 var template = vtempl.HandlebarsTemplateEngine.create(vertx);
 
 exports.renderTemplate = function (data) {
     return function (templateName) {
         return function (responseHandler) {
             return function() {
-                template.render({fortunes: []}, templateName, function(res) {
-                  responseHandler(res)()
+                template.render(JSON.parse(data), templateName, function(res) {
+                  responseHandler(res)();
               });
-            }
-        }
-    }
-}
+            };
+        };
+    };
+};
 
 exports.getTemplateResult = function (res) {
-    return res.result()
-}
+    return res.result();
+};
 
 exports.createRouter = function() {
     return Router.router(vertx);
