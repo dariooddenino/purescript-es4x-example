@@ -3,7 +3,8 @@ module Es4x.Web where
 import Control.Bind (bind)
 import Data.Unit (Unit)
 import Effect (Effect)
-import Effect.Class (class MonadEffect)
+import Effect.Class (class MonadEffect, liftEffect)
+import Types (App(..))
 
 data Server
 data RoutingContext
@@ -25,11 +26,11 @@ foreign import createRoute :: Router -> RoutePath -> Effect Route
 foreign import handle :: Route -> (RoutingContext -> Effect Unit) -> Effect Unit
 foreign import handleRouter :: Server -> Router -> Effect Server
 
-
-handlePath :: Router -> RoutePath -> (RoutingContext -> Effect Unit) -> Effect Unit
-handlePath router path handler = do
-  route <- createRoute router path
-  handle route handler
+-- not actually using this
+-- handlePath :: Router -> RoutePath -> (RoutingContext -> App Unit) -> App Unit
+-- handlePath router path handler = do
+--   route <- liftEffect (createRoute router path)
+--   handle route handler
 
 foreign import renderTemplate :: String -> String -> (TemplateResult -> Effect Unit) -> Effect Unit
 foreign import getTemplateResult :: TemplateResult -> String

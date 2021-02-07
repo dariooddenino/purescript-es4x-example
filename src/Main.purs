@@ -13,25 +13,15 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Class.Console (log, logShow)
 import Prim.RowList (class RowToList)
 import Simple.JSON (class WriteForeign, class WriteForeignFields, writeJSON)
+import Types (App(..), Config(..))
 
 
--- foreign import renderTemplate :: String -> String -> (Response -> Effect Response)
--- foreign import getTemplateResult :: TemplateResult -> String
---
-
--- This could become something like HandlerData
-data Config = Config { port :: Int }
-newtype App a = App (ReaderT Config Effect a)
-derive newtype instance bindApp :: Bind App
-derive newtype instance applicativeApp :: Applicative App
-derive newtype instance monadAskApp :: MonadAsk Config App
-derive newtype instance monadEffectApp :: MonadEffect App
 
 
--- createConfig :: Effect Config
--- createConfig = do
---   router <- createRouter
---   pure $ Config { router }
+
+createConfig :: Aff Config
+createConfig = do
+  pure $ Config { port: 8888 }
 
 -- getRouter :: Config -> Router
 -- getRouter (Config { router }) = router
@@ -75,12 +65,14 @@ derive newtype instance monadEffectApp :: MonadEffect App
 --   sendJSON { message: "Hello, World!" }
 
 
--- getConfig ::
+runApp :: forall a. App a -> Aff a
+runApp (App readerT) = do
+  config <- createConfig
+  runReaderT readerT config
 
--- runApp :: App Config -> Effect Config
--- runApp (App readerT) = do
---   config <- createConfig
---   runReaderT readerT config
+runHandler :: forall a. Config -> App a -> Aff a
+runHandler config (App handler) = do
+  runReaderT handler config
 
 -- TODO: return a way to close the server?
 runHttpServer :: Config -> Router -> Effect Unit
@@ -113,7 +105,7 @@ runHttpServer config router = do
 data Template r = Template String { | r }
 
 class Respondable a where
-  respond :: Response -> a -> Aff Unit
+  respond :: Response -> a -> App Unit
 
 instance stringRespondable :: Respondable String where
   respond resp s =
@@ -148,42 +140,64 @@ instance jsonRespondable
 
 -- TODO I think we should pass the response to the handler, or give some
 --      implicit way to handle it
-handler :: forall a. Respondable a => Router -> RoutePath -> (RoutingContext -> Aff a) -> Effect Unit
-handler router path ihandler = do
+handler :: forall a. Respondable a => Router -> RoutePath -> (RoutingContext -> App a) -> App Unit
+handler router path ihandler = liftEffect do
   iroute <- createRoute router path
-  handle iroute \ctx -> launchAff_ do
-    resp <- liftEffect $ response ctx
-    val <- ihandler ctx
-    respond resp val
+  config <- ask
+  handle iroute \ctx -> do
+    resp <- response ctx
+  -- TODO the problem here is that we are in eff,
+  -- do we have to thread the config?
+  -- does this even make any sense?
+  -- TODO can we make the foreign an Aff at least?
+    runHandler config $ do
+      val <- ihandler ctx
+      respond resp val
+    -- val <- runHandler config (ihandler ctx)
+    -- -- val <- ihandler ctx
+    -- respond resp val
 
-stringHandler :: Router -> RoutePath -> (RoutingContext -> Aff String) -> Effect Unit
+stringHandler :: Router -> RoutePath -> (RoutingContext -> App String) -> App Unit
 stringHandler = handler
 
 -- TODO we could "hardcode" or put in the reader the templates path and type?
-templateHandler :: forall r t r2. RowToList r t => WriteForeignFields t r () r2 => Router -> RoutePath -> (RoutingContext -> Aff (Template r)) -> Effect Unit
+templateHandler :: forall r t r2. RowToList r t => WriteForeignFields t r () r2 => Router -> RoutePath -> (RoutingContext -> App (Template r)) -> App Unit
 templateHandler = handler
 
-jsonHandler :: forall a. WriteForeign a => Router -> RoutePath -> (RoutingContext -> Aff a) -> Effect Unit
+jsonHandler :: forall a. WriteForeign a => Router -> RoutePath -> (RoutingContext -> App a) -> App Unit
 jsonHandler = handler
 
 main :: Effect Unit
 main = do
-  let config = Config { port: 8888 }
   router <- createRouter
+  launchAff_ $ runApp do
 
-  stringHandler router "/" \req -> do
-    pure "Hello Chunko"
+    stringHandler router "/" \req -> do
+      pure "Hello String"
 
-  templateHandler router "/fortunes" \req -> do
-    pure $ Template "templates/fortunes.hbs" { fortunes: [{ id: 1, message: "This template work" }] }
+    templateHandler router "/fortunes" \req -> do
+      pure $ Template "templates/fortunes.hbs" { fortunes: [{ id: 1, message: "This template work" }] }
 
-  jsonHandler router "/json" \req -> do
-    pure { bananas: [1, 2, 3] }
+    jsonHandler router "/json" \req -> do
+      pure { bananas: [1, 2, 3] }
 
-  -- just temp stuff
-  runHttpServer config router
-  -- server <- createHttpServer
-  -- s <- handleRouter server router
-  -- listen s 8888
+    config <- ask
+    liftEffect $ runHttpServer config router
 
-  log "Server started on port 8888"
+
+  -- let config = Config { port: 8888 }
+  -- router <- createRouter
+
+  -- stringHandler router "/" \req -> do
+  --   pure "Hello String"
+
+  -- templateHandler router "/fortunes" \req -> do
+  --   pure $ Template "templates/fortunes.hbs" { fortunes: [{ id: 1, message: "This template work" }] }
+
+  -- jsonHandler router "/json" \req -> do
+  --   pure { bananas: [1, 2, 3] }
+
+  -- -- just temp stuff
+  -- runHttpServer config router
+
+  -- log "Server started on port 8888"

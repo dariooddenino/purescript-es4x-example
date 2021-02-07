@@ -2,25 +2,28 @@
 
 Keep the api as similar to the original as possible
 
+[ ] Change inner names for types
 [ ] ReaderT to thread the immutable config (not the router!)
+[ ] How does es4x handle GET/POSt/etc methods?
+[ ] data Route = Route path [methods] reqtype restype
+[ ] typecheck request and response from route type
+[ ] Type safety for the path
 [ ] Database connection
-[ ] Better template handling
+[ ] Prevent overlapping routes?
+[ ] Error handling like yesod
+[ ] Logging
+[ ] Auth
+[ ] dom patching
+[ ] link prefetch
+[ ] styling setup
+[ ] templates type safety
+
+
+[X] Better template handling
 [X] Auto response encoding
     Instead of manually calling end with the type I should return a datatype
     Then the appropriate function and headers are used
-[ ] Type safety for the request if it's json
-[ ] Type safety for the path
-[ ] Should we be in Aff maybe?
-[ ] How does es4x handle GET/POSt/etc methods?
-
-I think ideally we could have something like
-
-data Route = Route path [methods] reqtype restype
-
-and then
-
-doRoute route \req -> do
-  pure someresponsedependingontype
+[X] Should we be in Aff maybe?
   
 
 
