@@ -17,8 +17,6 @@ data Router
 data Route
 type RoutePath = String
 
-data TemplateResult
-
 foreign import createHttpServer :: Effect Server
 foreign import handleRequests :: Server -> (RoutingContext -> Effect Unit) -> Effect Server
 
@@ -26,15 +24,6 @@ foreign import createRouter :: Effect Router
 foreign import createRoute :: Router -> RoutePath -> Effect Route
 foreign import handle :: Route -> (RoutingContext -> Effect Unit) -> Effect Unit
 foreign import handleRouter :: Server -> Router -> Effect Server
-
--- not actually using this
--- handlePath :: Router -> RoutePath -> (RoutingContext -> App Unit) -> App Unit
--- handlePath router path handler = do
---   route <- liftEffect (createRoute router path)
---   handle route handler
-
-foreign import renderTemplate :: String -> String -> (TemplateResult -> Effect Unit) -> Effect Unit
-foreign import getTemplateResult :: TemplateResult -> String
 
 
 foreign import request :: RoutingContext -> Effect Request

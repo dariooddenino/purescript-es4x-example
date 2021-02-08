@@ -3,7 +3,7 @@
 Keep the api as similar to the original as possible
 
 [ ] Change inner names for types
-[ ] ReaderT to thread the immutable config (not the router!)
+[X] ReaderT to thread the immutable config (not the router!)
 [ ] How does es4x handle GET/POSt/etc methods?
 [ ] data Route = Route path [methods] reqtype restype
 [ ] typecheck request and response from route type

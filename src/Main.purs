@@ -2,6 +2,7 @@ module Main where
 
 import Control.Monad.Reader
 import Es4x.Web
+import Es4x.Web.Template.Handlebars
 import Prelude
 
 import Control.Bind (bind, discard)
@@ -178,8 +179,9 @@ main = do
       pure { bananas: [1, 2, 3] }
 
     stringHandler router "/wait" \_ -> do
-      liftAff $ delay $ Milliseconds 10000.0
-      pure "Waited"
+      liftAff $ delay $ Milliseconds 5000.0
+      Config { port } <- ask
+      pure $ "Waited on port " <> show port
 
     config <- ask
     liftEffect $ runHttpServer config router
