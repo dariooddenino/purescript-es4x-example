@@ -24,12 +24,6 @@ Keep the api as similar to the original as possible
     Instead of manually calling end with the type I should return a datatype
     Then the appropriate function and headers are used
 [X] Should we be in Aff maybe?
-  
-
-
-
-
-
 
 
 # YESOD

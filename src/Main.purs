@@ -8,7 +8,7 @@ import Control.Bind (bind, discard)
 import Data.Unit (Unit)
 import Effect (Effect)
 import Effect.Aff (Aff, Milliseconds(..), delay, launchAff_)
-import Effect.Aff.Class (class MonadAff)
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Class.Console (log, logShow)
 import Prim.RowList (class RowToList)
@@ -70,9 +70,9 @@ runApp (App readerT) = do
   config <- createConfig
   runReaderT readerT config
 
-runHandler :: forall a. Config -> App a -> Aff a
+runHandler :: forall a. Config -> App a -> Effect Unit
 runHandler config (App handler) = do
-  runReaderT handler config
+  launchAff_ $ runReaderT handler config
 
 -- TODO: return a way to close the server?
 runHttpServer :: Config -> Router -> Effect Unit
@@ -137,25 +137,21 @@ instance jsonRespondable
 -- instance fooRespondable :: Respondable foo where
 --   respond resp a = liftEffect $ endStr resp "Foo"
 
+createRoute' :: Router -> RoutePath -> App Route
+createRoute' router path = liftEffect $ createRoute router path
 
 -- TODO I think we should pass the response to the handler, or give some
 --      implicit way to handle it
 handler :: forall a. Respondable a => Router -> RoutePath -> (RoutingContext -> App a) -> App Unit
-handler router path ihandler = liftEffect do
-  iroute <- createRoute router path
+handler router path ihandler = do
+  iroute <- createRoute' router path
+  -- iroute <- lift $ liftEffect $ createRoute router path
   config <- ask
-  handle iroute \ctx -> do
+  liftEffect $ handle iroute \ctx -> do
     resp <- response ctx
-  -- TODO the problem here is that we are in eff,
-  -- do we have to thread the config?
-  -- does this even make any sense?
-  -- TODO can we make the foreign an Aff at least?
     runHandler config $ do
       val <- ihandler ctx
       respond resp val
-    -- val <- runHandler config (ihandler ctx)
-    -- -- val <- ihandler ctx
-    -- respond resp val
 
 stringHandler :: Router -> RoutePath -> (RoutingContext -> App String) -> App Unit
 stringHandler = handler
@@ -180,6 +176,10 @@ main = do
 
     jsonHandler router "/json" \req -> do
       pure { bananas: [1, 2, 3] }
+
+    stringHandler router "/wait" \_ -> do
+      liftAff $ delay $ Milliseconds 10000.0
+      pure "Waited"
 
     config <- ask
     liftEffect $ runHttpServer config router

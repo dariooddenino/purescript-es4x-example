@@ -3,6 +3,7 @@ module Es4x.Web where
 import Control.Bind (bind)
 import Data.Unit (Unit)
 import Effect (Effect)
+import Effect.Aff (Aff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Types (App(..))
 
