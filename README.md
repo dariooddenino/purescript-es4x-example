@@ -2,12 +2,15 @@
 
 Keep the api as similar to the original as possible
 
+[ ] Can we get access to the response object somehow inside our handlers?
 [ ] Change inner names for types
 [X] ReaderT to thread the immutable config (not the router!)
 [ ] How does es4x handle GET/POSt/etc methods?
 [ ] data Route = Route path [methods] reqtype restype
 [ ] typecheck request and response from route type
+    Link to the point below
 [ ] Type safety for the path
+    Use a heterogeneous list here?
 [ ] Database connection
 [ ] Prevent overlapping routes?
 [ ] Error handling like yesod

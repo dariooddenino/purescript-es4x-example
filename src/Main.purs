@@ -24,84 +24,23 @@ createConfig :: Aff Config
 createConfig = do
   pure $ Config { port: 8888 }
 
--- getRouter :: Config -> Router
--- getRouter (Config { router }) = router
-
--- route :: RoutePath -> (RoutingContext -> Effect Unit) -> App Unit
--- route path handler = do
---   Config { router } <- ask
---   route_ <- liftEffect $  createRoute router path
---   liftEffect $ handle route_ handler
-
--- trying some alternative stuff to reduce boilerplate
--- name?
--- data Foo = Foo { config :: Config, ctx :: RoutingContext, response :: Response }
--- type Handler a = ReaderT Foo Effect a
-
--- route' :: RoutePath -> Handler Unit -> App Unit
--- route' path handler = do
---   c@(Config { router }) <- ask
---   route_ <- liftEffect $ createRoute router path
---   liftEffect $ handle route_ $ \ctx -> do
---     resp <- response ctx
---     runReaderT handler $ Foo { config: c, ctx, response: resp }
-
--- This doesn't work like this, as it would be modifying the reader value.
--- Should I be using a State monad? Some kind of indexed monad? To model
--- middlewares? how do other libraries solve this?
--- Maybe I can just accumulate the changes and "solve" them afterwards
--- putHeader' :: String -> String -> Handler Response
--- putHeader' n v = do
---   Foo { response } <- ask
---   liftEffect $ putHeader response n v
-
--- ideal middle ground code:
-
--- route' "/json" $ do
---   putHeader "Content-Type" "application/json"
---   pure $ toJSON { message: "Hello, World!" } -- or Object?
-
--- ideal final code:
--- route' "/json" $ do
---   sendJSON { message: "Hello, World!" }
-
-
-runApp :: forall a. App a -> Aff a
-runApp (App readerT) = do
+runApp :: forall a. App a -> Effect Unit
+runApp (App readerT) = launchAff_ do
   config <- createConfig
   runReaderT readerT config
 
 runHandler :: forall a. Config -> App a -> Effect Unit
-runHandler config (App handler) = do
-  launchAff_ $ runReaderT handler config
+runHandler config (App readerT) = do
+  launchAff_ $ runReaderT readerT config
 
 -- TODO: return a way to close the server?
-runHttpServer :: Config -> Router -> Effect Unit
-runHttpServer config router = do
+runHttpServer :: Router -> App Unit
+runHttpServer router = do
+  config <- ask
   let (Config { port }) = config
-  s1 <- createHttpServer
-  s2 <- handleRouter s1 router
-  listen s2 port
-
--- routes :: App Config
--- routes = do
---     route "/" \ctx -> do
---       resp <- response ctx
---       endStr resp "Hello World!"
-
---     route' "/json" $ do
---       pure unit
---       -- ctx <- ask
---       -- resp <- liftEffect $ response ctx
---       -- resp' <- liftEffect $ putHeader resp "Content-Type" "application/json"
---       -- liftEffect $ endStr resp' "{\"message\": \"Hello, World!\"}"
---     ask
-
--- main' :: Effect Unit
--- main' = do
---   config <- runApp routes
---   liftEffect $ runHttpServer config 8888
---   log "Server running"
+  s1 <- liftEffect $ createHttpServer
+  s2 <- liftEffect $ handleRouter s1 router
+  liftEffect $ listen s2 port
 
 data Template r = Template String { | r }
 
@@ -167,7 +106,7 @@ jsonHandler = handler
 main :: Effect Unit
 main = do
   router <- createRouter
-  launchAff_ $ runApp do
+  runApp do
 
     stringHandler router "/" \req -> do
       pure "Hello String"
@@ -183,23 +122,4 @@ main = do
       Config { port } <- ask
       pure $ "Waited on port " <> show port
 
-    config <- ask
-    liftEffect $ runHttpServer config router
-
-
-  -- let config = Config { port: 8888 }
-  -- router <- createRouter
-
-  -- stringHandler router "/" \req -> do
-  --   pure "Hello String"
-
-  -- templateHandler router "/fortunes" \req -> do
-  --   pure $ Template "templates/fortunes.hbs" { fortunes: [{ id: 1, message: "This template work" }] }
-
-  -- jsonHandler router "/json" \req -> do
-  --   pure { bananas: [1, 2, 3] }
-
-  -- -- just temp stuff
-  -- runHttpServer config router
-
-  -- log "Server started on port 8888"
+    runHttpServer router
